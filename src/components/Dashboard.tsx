@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { TransactionService } from '../services/transactionService';
 import { DollarSign, TrendingUp, TrendingDown, Wallet } from 'lucide-react';
+import * as XLSX from 'xlsx';
+import { saveAs } from 'file-saver';
 
 export const Dashboard: React.FC = () => {
   const { user } = useAuth();
@@ -15,11 +17,31 @@ export const Dashboard: React.FC = () => {
     }).format(amount);
   };
 
+  const exportToExcel = () => {
+    if (!user || recentTransactions.length === 0) return;
+
+    const worksheet = XLSX.utils.json_to_sheet(recentTransactions.map(t => ({
+      Tanggal: new Date(t.date).toLocaleDateString('id-ID'),
+      Deskripsi: t.description,
+      Kategori: t.category,
+      Tipe: t.type === 'income' ? 'Pemasukan' : 'Pengeluaran',
+      Jumlah: t.amount,
+    })));
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Laporan Transaksi");
+
+    const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+    const fileData = new Blob([excelBuffer], { type: 'application/octet-stream' });
+    saveAs(fileData, `Laporan_Transaksi_${user.name || 'user'}.xlsx`);
+  };
+
   if (!summary) return null;
 
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {/* ... Kartu Saldo, Pemasukan, Pengeluaran, Bulan Ini ... */}
         <div className="bg-white p-6 rounded-lg shadow-sm border">
           <div className="flex items-center">
             <div className="flex-shrink-0">
@@ -33,7 +55,6 @@ export const Dashboard: React.FC = () => {
             </div>
           </div>
         </div>
-
         <div className="bg-white p-6 rounded-lg shadow-sm border">
           <div className="flex items-center">
             <div className="flex-shrink-0">
@@ -45,7 +66,6 @@ export const Dashboard: React.FC = () => {
             </div>
           </div>
         </div>
-
         <div className="bg-white p-6 rounded-lg shadow-sm border">
           <div className="flex items-center">
             <div className="flex-shrink-0">
@@ -57,7 +77,6 @@ export const Dashboard: React.FC = () => {
             </div>
           </div>
         </div>
-
         <div className="bg-white p-6 rounded-lg shadow-sm border">
           <div className="flex items-center">
             <div className="flex-shrink-0">
@@ -73,9 +92,18 @@ export const Dashboard: React.FC = () => {
         </div>
       </div>
 
+      {/* Transaksi Terbaru */}
       <div className="bg-white shadow-sm rounded-lg border">
-        <div className="px-6 py-4 border-b border-gray-200">
+        <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
           <h3 className="text-lg font-medium text-gray-900">Transaksi Terbaru</h3>
+          {recentTransactions.length > 0 && (
+            <button
+              onClick={exportToExcel}
+              className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded shadow text-sm"
+            >
+              Ekspor ke Excel
+            </button>
+          )}
         </div>
         <div className="p-6">
           {recentTransactions.length === 0 ? (
